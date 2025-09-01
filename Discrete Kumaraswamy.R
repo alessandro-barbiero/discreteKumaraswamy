@@ -33,7 +33,7 @@ for(i in 1:length(alpha))
     text(x=.5,y=1.5, labels = text.b)
   }
 }
-par(op) 
+par(op)
 ##################################
 #### Kumaraswamy distribution ####
 ##################################
@@ -51,7 +51,7 @@ F.K(0.5,2,2)
 ############################
 M.K <- function(alpha,beta,r) beta*beta(1+r/alpha,beta)
 # skewness
-sk.K <- function(alpha,beta) 
+sk.K <- function(alpha,beta)
 {
   E <- M.K(alpha,beta,1)
   V <- M.K(alpha,beta,2) - E^2
@@ -102,7 +102,7 @@ rdiscreteK <- function(n, k, a, b)
 k <- 7
 op<-par()
 par(mfrow=c(5,5), mar=c(1,1,1,1), mai=c(0.25,0.25,0.1,0.2), cex=.6)
-alpha<-c(0.5, 0.75, 1, 1.5, 2.5) 
+alpha<-c(0.5, 0.75, 1, 1.5, 2.5)
 for(i in 1:length(alpha))
 {
   for(j in 1:length(alpha))
@@ -116,7 +116,7 @@ for(i in 1:length(alpha))
     text(x=4,y=.7, labels = text.b)
   }
 }
-par(op) 
+par(op)
 #
 ###########################################
 ################# MOMENTS #################
@@ -186,7 +186,7 @@ par(op)
 library(bbmle)
 est.dK <- function(x, method="ML")
 {
-#k <- max(x)  
+#k <- max(x)
 if(method=="MM") # Method of moments
 {
 f.mom <- function(par,k)
@@ -245,120 +245,6 @@ return(list(res@coef,CI))
 }
 }
 }
-#######################################################
-##################  S T A R T   O F  ##################
-############ S I M U L A T I O N   P L A N ############
-#######################################################
-set.seed(12345)
-nS <- 10000 # n. of MC runs
-A <- matrix(0, nS, 4)
-B <- matrix(0, nS, 4)
-CI.A <- matrix(0,nS,2)
-CI.B <- matrix(0,nS,2)
-X <- matrix(0, nS, n)
-n <- 100 # sample size
-a <- 1   # (0.5, 0.75, 1, 1.5, 2)
-b <- 2.5 # (0.5, 0.75, 1, 1.5, 2)
-k <- 7   # 5 or 7
-for(i in 1:nS)
-{
-  cat("Simulazione n. ",i,"\n")
-  x <- rdiscreteK(n, k, a, b)
-  X[i,] <- x
-  res.P   <- est.dK(x, "MP")
-  res.M   <- est.dK(x, "MM")
-  res.MCS <- est.dK(x, "MCS")
-  res.ML  <- est.dK(x, "ML")
-  A[i, 1] <- res.P[1]
-  B[i, 1] <- res.P[2]
-  A[i, 2] <- res.M[1]
-  B[i, 2] <- res.M[2]
-  A[i, 3] <- res.MCS[1]
-  B[i, 3] <- res.MCS[2]
-  A[i, 4] <- res.ML[[1]][1]
-  B[i, 4] <- res.ML[[1]][2]
-  CI.A[i,] <- res.ML[[2]][1,]
-  CI.B[i,] <- res.ML[[2]][2,]
-}
-missing.rate <- mean(is.na(A[,1]))
-lab <- c("P","M","MCS","ML")
-colnames(A) <- lab
-colnames(B) <- lab
-
-m.A <- apply(A,2,mean, na.rm=TRUE)
-m.B <- apply(B,2,mean, na.rm=TRUE)
-# MC bias
-bias.A <- apply(A-a,2,mean, na.rm=TRUE)
-bias.B <- apply(B-b,2,mean, na.rm=TRUE)
-# MC variance
-var.A  <- apply(A^2, 2, mean, na.rm=TRUE) - apply(A, 2, mean, na.rm=TRUE)^2
-var.B <- apply(B^2, 2, mean, na.rm=TRUE) - apply(B, 2, mean, na.rm=TRUE)^2
-# MC root mean squared error
-rmse.A <- sqrt(apply((A-a)^2,2,mean, na.rm=TRUE))
-rmse.B <- sqrt(apply((B-b)^2,2,mean, na.rm=TRUE))
-# coverage
-cov.A <- mean(CI.A[,1] <= a & a <= CI.A[,2], na.rm=TRUE)
-cov.B <- mean(CI.B[,1] <= b & b <= CI.B[,2], na.rm=TRUE)
-# length
-len.A <- mean(CI.A[,2] - CI.A[,1], na.rm=TRUE)
-len.B <- mean(CI.B[,2] - CI.B[,1], na.rm=TRUE)
-#
-filename <- paste("discreteK a",a,"b",b,"k",k,"n",n)
-save(file=paste(filename,".Rdata",sep=""),list=ls())
-# boxplots
-boxplot(A, main=paste("estimators of parameter a"))
-abline(h=a, lty=3)
-boxplot(B, main=paste("estimators of parameter b"))
-abline(h=b, lty=3)
-# scatter plots
-op<-par()
-par(mfrow=c(2,2), mai=c(0.65,0.7,0.2,0.1), mgp=c(2.5,1,0))
-for(i in 1:4)
-{
-  plot(A[,i],B[,i],main=lab[i],xlab=expression(hat(a)),ylab=expression(hat(b)))
-  lab.rho <- bquote(r==.(round(cor(A[,i],B[,i],use="complete.obs"),3)))
-  text(x=min(A[,i],na.rm=TRUE), y=.98*max(B[,i],na.rm=TRUE), labels=lab.rho,pos=4)
-}
-par(op)
-# printing on a txt file the main results
-filetxt <- paste(filename,"txt",sep=".")
-sink(file=filetxt)
-cat("a=",a,"\n")
-cat("b=",b,"\n")
-cat("k=",k,"\n")
-cat("n=",n,"\n")
-cat("\n")
-cat("MC mean of a and b:","\n")
-m.A
-m.B
-cat("\n")
-cat("MC BIAS of a and b:","\n")
-bias.A
-bias.B
-cat("\n")
-cat("MC Variance of a and b:","\n")
-var.A
-var.B
-cat("\n")
-cat("MC RMSE of a and b:","\n")
-rmse.A
-rmse.B
-cat("\n")
-cat("Coverage of CIs for a and b:","\n")
-cov.A
-cov.B
-cat("\n")
-cat("Length of CIs for a and b:","\n")
-len.A
-len.B
-cat("\n")
-cat("Rate of missing data for the method of proportion:","\n")
-missing.rate
-sink()
-#######################################################
-##################### E N D   O F #####################
-############ S I M U L A T I O N   P L A N ############
-#######################################################
 
 ########################
 ####  DISCRETE BETA ####
@@ -460,7 +346,7 @@ ddiscreteK_pmf <- Vectorize(function(x, k, eta, gamma,log=FALSE) {
 # with discrete k response variable
 # Define the covariates and the data
 set.seed(12345) # for reproducibility
-n <- 100  
+n <- 100
 h <- 3          # N. of covariates (excluding the intercept)
 
 # Randomly generate the covariates
@@ -499,12 +385,12 @@ for(s in 1:S)
   param <- compute_ab(eta,gamma)
   A[s,]<-param$a
   B[s,]<-param$b
-  # sampling from the discrete Kumaraswamy 
+  # sampling from the discrete Kumaraswamy
   y <- rdiscreteK(n,param$a,param$b,k=5)
   x <- data.frame(x1,x2)
   # computing MLEs
   mle_fit <- mle2(y~ddiscreteK_pmf(eta,gamma,k=max(y)),
-                  data=data.frame(y,x), 
+                  data=data.frame(y,x),
                   parameters=list(eta~unlist(x1)+unlist(x2),gamma~unlist(x1)+unlist(x2)),           ## linear model for loglambda
                   start=list(eta=0,gamma=0))
   estimates[s,] <- mle_fit@coef
@@ -728,7 +614,7 @@ X <- data.frame(X1,X2)
 mle_fit <- mle2(y~ddiscreteK_pmf(eta,gamma,k=max(y)),     ## specify the response distribution
                 data=data.frame(y,X),                     ## need to specify data as data frame
                 parameters=list(eta~unlist(X1)+unlist(X2),## linear model for transformed par. eta and gamma
-                gamma~unlist(X1)+unlist(X2)),             
+                gamma~unlist(X1)+unlist(X2)),
                 start=list(eta=0,gamma=0))
 
 summary(mle_fit)
@@ -746,3 +632,118 @@ set.seed(538)
 y.sim <- rdiscreteK(n=n, k=8, parK.est[[1]], parK.est[[2]])
 table(y.sim)
 table(y)
+
+#######################################################
+##################  S T A R T   O F  ##################
+############ S I M U L A T I O N   P L A N ############
+#######################################################
+set.seed(12345)
+nS <- 10000 # n. of MC runs
+A <- matrix(0, nS, 4)
+B <- matrix(0, nS, 4)
+CI.A <- matrix(0,nS,2)
+CI.B <- matrix(0,nS,2)
+n <- 200 # sample size
+X <- matrix(0, nS, n)
+a <- 1.5   # (0.5, 0.75, 1, 1.5, 2)
+b <- 0.75 # (0.5, 0.75, 1, 1.5, 2)
+k <- 7   # 5 or 7
+for(i in 1:nS)
+{
+  cat("Simulazione n. ",i,"\n")
+  x <- rdiscreteK(n, k, a, b)
+  X[i,] <- x
+  res.P   <- est.dK(x, "MP")
+  res.M   <- est.dK(x, "MM")
+  res.MCS <- est.dK(x, "MCS")
+  res.ML  <- est.dK(x, "ML")
+  A[i, 1] <- res.P[1]
+  B[i, 1] <- res.P[2]
+  A[i, 2] <- res.M[1]
+  B[i, 2] <- res.M[2]
+  A[i, 3] <- res.MCS[1]
+  B[i, 3] <- res.MCS[2]
+  A[i, 4] <- res.ML[[1]][1]
+  B[i, 4] <- res.ML[[1]][2]
+  CI.A[i,] <- res.ML[[2]][1,]
+  CI.B[i,] <- res.ML[[2]][2,]
+}
+missing.rate <- mean(is.na(A[,1]))
+lab <- c("P","M","MCS","ML")
+colnames(A) <- lab
+colnames(B) <- lab
+
+m.A <- apply(A,2,mean, na.rm=TRUE)
+m.B <- apply(B,2,mean, na.rm=TRUE)
+# MC bias
+bias.A <- apply(A-a,2,mean, na.rm=TRUE)
+bias.B <- apply(B-b,2,mean, na.rm=TRUE)
+# MC variance
+var.A  <- apply(A^2, 2, mean, na.rm=TRUE) - apply(A, 2, mean, na.rm=TRUE)^2
+var.B <- apply(B^2, 2, mean, na.rm=TRUE) - apply(B, 2, mean, na.rm=TRUE)^2
+# MC root mean squared error
+rmse.A <- sqrt(apply((A-a)^2,2,mean, na.rm=TRUE))
+rmse.B <- sqrt(apply((B-b)^2,2,mean, na.rm=TRUE))
+# coverage
+cov.A <- mean(CI.A[,1] <= a & a <= CI.A[,2], na.rm=TRUE)
+cov.B <- mean(CI.B[,1] <= b & b <= CI.B[,2], na.rm=TRUE)
+# length
+len.A <- mean(CI.A[,2] - CI.A[,1], na.rm=TRUE)
+len.B <- mean(CI.B[,2] - CI.B[,1], na.rm=TRUE)
+#
+filename <- paste("discreteK a",a,"b",b,"k",k,"n",n)
+save(file=paste(filename,".Rdata",sep=""),list=ls())
+# boxplots
+boxplot(A, main=paste("estimators of parameter a"))
+abline(h=a, lty=3)
+boxplot(B, main=paste("estimators of parameter b"))
+abline(h=b, lty=3)
+# scatter plots
+op<-par()
+par(mfrow=c(2,2), mai=c(0.65,0.7,0.2,0.1), mgp=c(2.5,1,0))
+for(i in 1:4)
+{
+  plot(A[,i],B[,i],main=lab[i],xlab=expression(hat(a)),ylab=expression(hat(b)))
+  lab.rho <- bquote(r==.(round(cor(A[,i],B[,i],use="complete.obs"),3)))
+  text(x=min(A[,i],na.rm=TRUE), y=.98*max(B[,i],na.rm=TRUE), labels=lab.rho,pos=4)
+}
+par(op)
+# printing on a txt file the main results
+filetxt <- paste(filename,"txt",sep=".")
+sink(file=filetxt)
+cat("a=",a,"\n")
+cat("b=",b,"\n")
+cat("k=",k,"\n")
+cat("n=",n,"\n")
+cat("\n")
+cat("MC mean of a and b:","\n")
+m.A
+m.B
+cat("\n")
+cat("MC BIAS of a and b:","\n")
+bias.A
+bias.B
+cat("\n")
+cat("MC Variance of a and b:","\n")
+var.A
+var.B
+cat("\n")
+cat("MC RMSE of a and b:","\n")
+rmse.A
+rmse.B
+cat("\n")
+cat("Coverage of CIs for a and b:","\n")
+cov.A
+cov.B
+cat("\n")
+cat("Length of CIs for a and b:","\n")
+len.A
+len.B
+cat("\n")
+cat("Rate of missing data for the method of proportion:","\n")
+missing.rate
+sink()
+#######################################################
+##################### E N D   O F #####################
+############ S I M U L A T I O N   P L A N ############
+#######################################################
